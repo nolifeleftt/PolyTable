@@ -1,0 +1,171 @@
+from bs4 import BeautifulSoup
+import requests
+import datetime
+import telebot
+from telebot import types
+import time
+
+def open_file(filename):
+    ids = {}
+    with open(filename) as file:
+        for i in file.readlines():
+            key, val = i.strip().split(';')
+            ids[key] = val
+    return ids
+def get_url(id):
+    ids = {}
+    with open('venv\ids.txt') as file:
+        for i in file.readlines():
+            key, val = i.strip().split(';')
+            ids[key] = val
+    url = ids[str(id)]
+    if url.find('?') != -1:
+        url = ids[str(id)][:url.find('?')]
+    else:
+        url = ids[str(id)]
+    return url
+
+def parse(url):
+    response = requests.get(url)
+    response.encoding = 'utf-8'
+    soup = BeautifulSoup(response.text, 'lxml')
+    page = soup.find_all('li', class_='schedule__day')
+    t = [[], [], [], [], [], [], []]
+    i = 0
+    for day in page:
+        date = (day.find('div', class_='schedule__date').text.strip())
+        t[i].append('🗓️' + date)
+        lessons = day.find_all('li', class_='lesson')
+        for lesson in lessons:
+            t[i].append('🕰️' + lesson.find('div', class_='lesson__subject').text.strip() + ', ' + (
+                lesson.find('div', class_='lesson__type').text.strip()))
+            t[i].append('📌' + lesson.find('div', class_='lesson__places').find('div').text.strip() + '\n')
+            # t[i].append('')
+        i += 1
+    return t
+
+
+while True:
+    today = datetime.date.today()
+    print(today)
+    def file_user_id(uid, number):
+        # Открываем файл для записи
+        file = open('venv\ids.txt', 'a')
+        # Записываем
+        file.write(str(uid) + ';'+ str(number) +'\n')
+        # Закрываем файл
+        file.close()
+    l = []
+    dt = datetime.datetime.today()
+    client = telebot.TeleBot('5741562885:AAE0B_c2HMWYTNS0HA_c1HnkJE4ttq7vTD4')
+
+
+    @client.message_handler(commands=['start'])
+    def begin(message):
+        ids = open_file('venv\ids.txt')
+        if str(message.chat.id) not in ids:
+            client.send_message(message.chat.id, 'Привет! Чтобы начать получать расписание напиши "/reg %ссылка_на_твое_расписание%"')
+        else:
+            markup_reply = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            btn_1 = types.KeyboardButton('Получить расписание')
+            btn_2 = types.KeyboardButton('Настройки')
+            markup_reply.add(btn_1, btn_2)
+            client.send_message(message.chat.id, 'Меню', reply_markup=markup_reply)
+
+    @client.message_handler(commands=['reg'])
+    def register(message):
+        ids = open_file('venv\ids.txt')
+        if str(message.chat.id) not in ids:
+            if 'ruz.spbstu.ru' in message.text:
+                file_user_id(message.chat.id, message.text.split()[-1])
+                client.send_message(message.chat.id, ' Регистрация успешно завершена')
+                markup_reply = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                btn_1 = types.KeyboardButton('Получить расписание')
+                btn_2 = types.KeyboardButton('Настройки')
+                markup_reply.add(btn_1, btn_2)
+                client.send_message(message.chat.id, 'Меню', reply_markup=markup_reply)
+                #client.register_next_step_handler(message, welcome)
+            else:
+                client.send_message(message.chat.id, 'Введите правильную ссылку')
+        else:
+            client.send_message(message.chat.id, "Вы уже зарегистрированы")
+            markup_reply = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            btn_1 = types.KeyboardButton('Получить расписание')
+            btn_2 = types.KeyboardButton('Настройки')
+            markup_reply.add(btn_1, btn_2)
+            client.send_message(message.chat.id, 'Меню', reply_markup=markup_reply)
+           # client.register_next_step_handler(message, welcome)
+
+    @client.message_handler(content_types=['text'])
+    def get_rasp(message):
+        if message.text == 'Получить расписание':
+            markup_reply = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            btn_1 = types.KeyboardButton('Расписание на сегодня')
+            btn_2 = types.KeyboardButton('Расписание на завтра')
+            btn_3 = types.KeyboardButton('Расписание на текущую неделю')
+            btn_4 = types.KeyboardButton('Расписание на следующую неделю')
+            btn_5 = types.KeyboardButton('Назад')
+            markup_reply.add(btn_1, btn_2,btn_3, btn_4, btn_5)
+            client.send_message(message.chat.id, 'На какой день прислать расписание?', reply_markup=markup_reply)
+        if message.text == 'Расписание на сегодня':
+            if today.isoweekday() == 5:
+                client.send_message(message.chat.id, "Сегодня воскресенье!")
+            else:
+                t = parse(get_url(message.chat.id))
+                res = '\n'.join(t[today.weekday()])
+                client.send_message(message.chat.id, res)
+        if message.text == 'Расписание на завтра':
+            if today.isoweekday() == 5:
+                client.send_message(message.chat.id, "Завтра воскресенье!")
+            else:
+                t = parse(get_url(message.chat.id))
+                res = ' ' * 39 + '\n'.join(t[today.weekday() + 1]) + '\n' +' ' * 39
+                client.send_message(message.chat.id, res)
+        if message.text == 'Расписание на текущую неделю':
+            t = parse(get_url(message.chat.id))
+            res =''
+            for i in t:
+                res += '\n'.join(i)
+                if i != t[-1] and i != t[-2]:
+                    res += '\n\n\n' #+ ' ' * 39 + '\n'
+            client.send_message(message.chat.id, res)
+        if message.text == 'Расписание на следующую неделю':
+            if today.isoweekday() == 7:
+                nxt = today + datetime.timedelta(days=8)
+                nxt_url = get_url(message.chat.id) + f'?date={str(nxt)}'
+            else:
+                nxt = today + datetime.timedelta(days=7)
+                nxt_url = get_url(message.chat.id) + f'?date={str(nxt)}'
+            nxt_week = parse(nxt_url)
+            res = ''
+            for i in nxt_week:
+                res += '\n'.join(i)
+                if i != nxt_week[-1] and i != nxt_week[-2]:
+                    res += '\n\n\n'  # + ' ' * 39 + '\n'
+            client.send_message(message.chat.id, res)
+
+        if message.text == 'Назад':
+            markup_reply = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            btn_1 = types.KeyboardButton('Получить расписание')
+            btn_2 = types.KeyboardButton('Настройки')
+            markup_reply.add(btn_1, btn_2)
+            client.send_message(message.chat.id, 'Меню', reply_markup=markup_reply)
+        if message.text == 'Настройки':
+            markup_reply = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            btn_1 = types.KeyboardButton('Сбросить ссылку')
+            btn_2 = types.KeyboardButton('Обратная связь')
+            btn_3= types.KeyboardButton('Назад')
+            markup_reply.add(btn_1, btn_2, btn_3)
+            client.send_message(message.chat.id, 'Настройки', reply_markup=markup_reply)
+        if message.text == 'Сбросить ссылку':
+            ids = open_file('venv\ids.txt')
+            if str(message.chat.id) in ids:
+                ids.pop(str(message.chat.id))
+                client.send_message(message.chat.id, 'Ссылка сброшена, зарегистрируйтесь заново используя команду /reg')
+                file = open('venv\ids.txt', 'w')
+                for key, value in ids.items():
+                    file.write(f'{key};{value}\n')
+                file.close()
+            else:
+                client.send_message(message.chat.id, 'Ссылка уже сброшена, зарегистрируйтесь заново используя команду /reg')
+    client.polling(none_stop=True, interval=0)
