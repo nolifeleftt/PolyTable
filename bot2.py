@@ -19,7 +19,11 @@ def parse_day(url, data):
             for lesson in lessons:
                 t.append('⏰' + lesson.find('div', class_='lesson__subject').text.strip() + ', ' + (
                     lesson.find('div', class_='lesson__type').text.strip()))
-                t.append('📌' + lesson.find('div', class_='lesson__places').find('div').text.strip() + '\n')
+                t.append('📌' + lesson.find('div', class_='lesson__places').find('div').text.strip())
+                try:
+                    t.append('👨‍🏫 ' + lesson.find('div', class_='lesson__teachers').find_all('span')[-1].text + '\n')
+                except AttributeError:
+                    pass
     if not t:
         res = f"<i>На {data} занятий нет.</i>"
     else:
@@ -55,9 +59,14 @@ def parse(url):
         t[i].append('🗓️' + '<b>' + date + '</b>')
         lessons = day.find_all('li', class_='lesson')
         for lesson in lessons:
+            #print(lesson)
             t[i].append('⏰' + lesson.find('div', class_='lesson__subject').text.strip() + ', ' + (
                 lesson.find('div', class_='lesson__type').text.strip()))
-            t[i].append('📌' + lesson.find('div', class_='lesson__places').find('div').text.strip() + '\n')
+            t[i].append('📌' + lesson.find('div', class_='lesson__places').find('div').text.strip())
+            try:
+                t[i].append('👨‍🏫 ' + lesson.find('div', class_='lesson__teachers').find_all('span')[-1].text + '\n')
+            except AttributeError:
+                pass
         i += 1
     return t
 
