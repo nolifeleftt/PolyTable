@@ -10,7 +10,7 @@ class User:
         return [self.username, self.id, self.name]
 
 
-bot = telebot.TeleBot('5682201668:AAFUU_Cv5p1feZzn4g5l1JFuJDh7FHdrNwM')
+bot = telebot.TeleBot('')
 @bot.message_handler(commands=['start'])
 def init(message):
     conn = sqlite3.connect('users.db')

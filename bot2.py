@@ -70,7 +70,7 @@ def parse(url):
         i += 1
     return t
 
-bot = telebot.TeleBot('5741562885:AAE0B_c2HMWYTNS0HA_c1HnkJE4ttq7vTD4')
+bot = telebot.TeleBot('')
 today = datetime.date.today()
 print(today)
 def file_user_id(uid, group):
